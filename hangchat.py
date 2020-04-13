@@ -169,6 +169,17 @@ def read_cleaned_dict(filename):
         return [clean_word(line) for line in fp.readlines()]
 
 
+def is_slacking(min_guesses, min2_guesses):
+    """
+    Someone is slacking if they took less than half as many guesses as the
+    second most inactive guesser, evevn if they had made 5 more guesses.  In
+    other words, `(min_guesses + 5) * 2 < min2_guesser`.
+    Note that this rule fails if there are two slackers with similar behavior,
+    e.g. two slackers that don't make any guesses.
+    """
+    return (min_guesses + 5) * 2 < min2_guesser
+
+
 # === Actual implementation ===
 
 class GameFactory:
@@ -376,5 +387,18 @@ class GameState:
         self.last_timer = self.callbacks.set_timer(self.game_id, self.timeout_ms, None)
 
     def _determine_slacker(self):
-        # FIXME: Determine 'slacker'?
-        return None
+        # Determine the two players with the fewest guesses.
+        min_guesses, min_player = float('inf'), None
+        min2_guesses = float('inf')
+
+        for player, amount in self.player_guesses.items():
+            if amount < min_guesses:
+                min2_guesses = min_guesses
+                min_guesses, min_player = amount, player
+            elif amount < min2_guesses:
+                min2_guesses = amount
+
+        if is_slacking(min_guesses, min2_guesses):
+            return min_player
+        else:
+            return None
